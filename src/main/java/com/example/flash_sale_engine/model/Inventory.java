@@ -11,28 +11,23 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Inventory {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(nullable = false, unique = true)
     private String productName;
-    
+
     @Column(nullable = false)
     private Integer stockQuantity;
-    
+
+    /**
+     * Optimistic locking version.
+     * Used by JPA to detect concurrent modifications.
+     * In v2, stock is managed by Redis Lua scripts so this is mainly
+     * for safety during the async DB write phase.
+     */
     @Version
-    private Integer version; // For Optimistic Locking
-    
-    public boolean hasStock() {
-        return stockQuantity > 0;
-    }
-    
-    public void decrementStock() {
-        // Only decrement if stock is available
-        if (stockQuantity > 0) {
-            stockQuantity--;
-        }
-    }
+    private Integer version;
 }
