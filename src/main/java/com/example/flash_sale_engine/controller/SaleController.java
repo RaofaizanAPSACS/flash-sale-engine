@@ -1,101 +1,167 @@
 package com.example.flash_sale_engine.controller;
 
-import com.example.flash_sale_engine.dto.*;
+import com.example.flash_sale_engine.model.Inventory;
 import com.example.flash_sale_engine.service.SaleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/v1/sale")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Slf4j
 public class SaleController {
-    
+
     private final SaleService saleService;
-    
+
     /**
-     * POST /api/v1/sale/enter-queue
-     * User requests to join the sale.
-     * Returns a queue_token or a "Come back later" message.
-     * 
-     * Designed to handle millions of concurrent requests without crashing.
+     * GET /api/v1/products
+     * List all products with current stock.
      */
-    @PostMapping("/enter-queue")
-    public ResponseEntity<EnterQueueResponse> enterQueue(@RequestBody EnterQueueRequest request) {
-        long startTime = System.currentTimeMillis();
+    @GetMapping("/products")
+    public ResponseEntity<?> getProducts() {
         try {
-            String token = saleService.enterQueue(request.getUserId());
-            long duration = System.currentTimeMillis() - startTime;
-            
-            if (token != null) {
-                return ResponseEntity.ok(new EnterQueueResponse(token, "Successfully entered queue", true));
-            } else {
-                return ResponseEntity.ok(new EnterQueueResponse(null, "Failed to enter queue. Please try again later.", false));
-            }
+            return ResponseEntity.ok(saleService.getAllProducts());
         } catch (org.springframework.dao.QueryTimeoutException | org.springframework.dao.DataAccessResourceFailureException e) {
-            log.warn("Database timeout/connection issue for user: {} - {}", request.getUserId(), e.getMessage());
-            return ResponseEntity.status(503).body(new EnterQueueResponse(null, "Service temporarily unavailable. Please try again.", false));
+            log.warn("Database timeout/connection issue while fetching products", e);
+            return ResponseEntity.status(503).body(Map.of(
+                    "message", "Unable to load products. Please try again in a moment.",
+                    "error", "SERVICE_UNAVAILABLE"
+            ));
         } catch (Exception e) {
-            log.error("Error entering queue for user: {}", request.getUserId(), e);
-            return ResponseEntity.status(500).body(new EnterQueueResponse(null, "Failed to enter queue. Please try again later.", false));
+            log.error("Error fetching products", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "message", "An error occurred while loading products.",
+                    "error", "INTERNAL_ERROR"
+            ));
         }
     }
-    
+
     /**
-     * POST /api/v1/sale/purchase
-     * User attempts to buy the item.
-     * Must have a valid queue_token.
-     * 
-     * Designed to handle extreme load while maintaining data consistency.
-     * Under high load, some requests may timeout or fail, but the system should stay responsive.
+     * GET /api/v1/products/{id}
+     * Get a single product.
      */
-    @PostMapping("/purchase")
-    public ResponseEntity<PurchaseResponse> purchase(@RequestBody PurchaseRequest request) {
-        long startTime = System.currentTimeMillis();
+    @GetMapping("/products/{id}")
+    public ResponseEntity<?> getProduct(@PathVariable Long id) {
         try {
-            SaleService.PurchaseResult result = saleService.buyItem(
-                request.getUserId(),
-                request.getQueueToken(),
-                request.getProductId()
-            );
-            
-            long duration = System.currentTimeMillis() - startTime;
-            
-            if (result.isSuccess()) {
-                return ResponseEntity.ok(new PurchaseResponse(
-                    result.getOrderId(),
-                    result.getMessage(),
-                    true
-                ));
-            } else {
-                return ResponseEntity.ok(new PurchaseResponse(
-                    null,
-                    result.getMessage(),
-                    false
+            Inventory product = saleService.getProduct(id);
+            if (product == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "message", "Product not found",
+                        "error", "PRODUCT_NOT_FOUND"
                 ));
             }
+            return ResponseEntity.ok(product);
         } catch (org.springframework.dao.QueryTimeoutException | org.springframework.dao.DataAccessResourceFailureException e) {
-            log.warn("Database timeout/connection issue for user: {} - {}", request.getUserId(), e.getMessage());
-            return ResponseEntity.status(503).body(new PurchaseResponse(
-                null,
-                "Service temporarily unavailable. Please try again.",
-                false
-            ));
-        } catch (org.springframework.transaction.TransactionTimedOutException e) {
-            log.warn("Transaction timeout for user: {}", request.getUserId());
-            return ResponseEntity.status(504).body(new PurchaseResponse(
-                null,
-                "Request timed out. Please try again.",
-                false
+            log.warn("Database timeout/connection issue while fetching product: id={}", id, e);
+            return ResponseEntity.status(503).body(Map.of(
+                    "message", "Unable to load product. Please try again in a moment.",
+                    "error", "SERVICE_UNAVAILABLE"
             ));
         } catch (Exception e) {
-            log.error("Error processing purchase for user: {}", request.getUserId(), e);
-            return ResponseEntity.status(500).body(new PurchaseResponse(
-                null,
-                "Purchase failed due to system error",
-                false
+            log.error("Error fetching product: id={}", id, e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "message", "An error occurred while loading the product.",
+                    "error", "INTERNAL_ERROR"
+            ));
+        }
+    }
+
+    /**
+     * POST /api/v1/products/{id}/purchase
+     * Purchase a product. Simple: user visits page, clicks buy, done.
+     *
+     * Request body: { "userId": "user123" }
+     * 
+     * Response codes:
+     * - 200: Purchase successful
+     * - 400: Bad request (missing userId)
+     * - 404: Product not found
+     * - 409: Sold out
+     * - 503: Service unavailable (database timeout/connection issue)
+     * - 504: Request timeout (transaction took too long)
+     * - 500: Internal server error
+     */
+    @PostMapping("/products/{id}/purchase")
+    public ResponseEntity<?> purchase(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String userId = body.get("userId");
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "userId is required",
+                    "success", false,
+                    "error", "MISSING_USER_ID"
+            ));
+        }
+
+        try {
+            SaleService.PurchaseResult result = saleService.purchaseProduct(userId, id);
+
+            if (result.isSuccess()) {
+                return ResponseEntity.ok(Map.of(
+                        "orderId", result.getOrderId(),
+                        "message", result.getMessage(),
+                        "success", true,
+                        "stockRemaining", result.getStockRemaining()
+                ));
+            }
+
+            // Product not found
+            if (result.getMessage().equals("Product not found")) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "message", "Product not found",
+                        "success", false,
+                        "error", "PRODUCT_NOT_FOUND"
+                ));
+            }
+
+            // Sold out - 409 Conflict
+            return ResponseEntity.status(409).body(Map.of(
+                    "message", "Sorry, this product is sold out. Please try another product.",
+                    "success", false,
+                    "error", "SOLD_OUT"
+            ));
+            
+        } catch (org.springframework.transaction.TransactionTimedOutException e) {
+            log.warn("Transaction timeout for purchase: user={}, product={}", userId, id);
+            return ResponseEntity.status(504).body(Map.of(
+                    "message", "Your request took too long to process. The system is experiencing high load. Please try again in a moment.",
+                    "success", false,
+                    "error", "REQUEST_TIMEOUT"
+            ));
+            
+        } catch (org.springframework.dao.QueryTimeoutException e) {
+            log.warn("Database query timeout for purchase: user={}, product={}", userId, id);
+            return ResponseEntity.status(503).body(Map.of(
+                    "message", "The system is currently experiencing high demand. Please try again in a few moments.",
+                    "success", false,
+                    "error", "DATABASE_TIMEOUT"
+            ));
+            
+        } catch (org.springframework.dao.DataAccessResourceFailureException e) {
+            log.error("Database connection failure for purchase: user={}, product={}", userId, id, e);
+            return ResponseEntity.status(503).body(Map.of(
+                    "message", "Unable to connect to the database. Please try again later.",
+                    "success", false,
+                    "error", "DATABASE_UNAVAILABLE"
+            ));
+            
+        } catch (org.springframework.dao.DataAccessException e) {
+            log.error("Database error for purchase: user={}, product={}", userId, id, e);
+            return ResponseEntity.status(503).body(Map.of(
+                    "message", "A database error occurred. Please try again later.",
+                    "success", false,
+                    "error", "DATABASE_ERROR"
+            ));
+            
+        } catch (Exception e) {
+            log.error("Unexpected error processing purchase: user={}, product={}", userId, id, e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "message", "An unexpected error occurred. Please try again later.",
+                    "success", false,
+                    "error", "INTERNAL_ERROR"
             ));
         }
     }

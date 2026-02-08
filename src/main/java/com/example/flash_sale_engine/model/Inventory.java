@@ -11,28 +11,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Inventory {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(nullable = false, unique = true)
     private String productName;
-    
+
     @Column(nullable = false)
     private Integer stockQuantity;
-    
+
+    /**
+     * Optimistic locking version.
+     * Not used by the native decrement query (which bypasses JPA),
+     * but kept for any future JPA-based updates.
+     */
     @Version
-    private Integer version; // For Optimistic Locking
-    
-    public boolean hasStock() {
-        return stockQuantity > 0;
-    }
-    
-    public void decrementStock() {
-        // Only decrement if stock is available
-        if (stockQuantity > 0) {
-            stockQuantity--;
-        }
-    }
+    private Integer version;
 }
