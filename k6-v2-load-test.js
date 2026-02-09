@@ -37,6 +37,8 @@ const purchaseLatency = new Trend('purchase_latency');
 const totalAccepted = new Counter('total_accepted');
 const totalSoldOut = new Counter('total_sold_out');
 const totalRateLimited = new Counter('total_rate_limited');
+const totalErrors = new Counter('total_errors');
+const totalTimeouts = new Counter('total_timeouts');
 
 // Load profile: 10k VUs. RUN_500K_REQUESTS=1 => ~500k total; RUN_1M_REQUESTS=1 => ~1M total.
 // Calibrated from: 715k requests in 130s with 1m hold (ramp 50s + hold 60s + ramp 20s).
@@ -125,6 +127,8 @@ export default function () {
         purchaseRateLimited.add(false);
         purchaseError.add(true);
         purchaseTimeout.add(true);
+        totalTimeouts.add(1);
+        totalErrors.add(1);
         sleep(0.5);
 
     } else {
@@ -133,6 +137,7 @@ export default function () {
         purchaseRateLimited.add(false);
         purchaseError.add(true);
         purchaseTimeout.add(false);
+        totalErrors.add(1);
     }
 
     sleep(0.05);
@@ -143,11 +148,18 @@ export function handleSummary(data) {
     const accepted = data.metrics.total_accepted ? data.metrics.total_accepted.values.count : 0;
     const soldOut = data.metrics.total_sold_out ? data.metrics.total_sold_out.values.count : 0;
     const rateLimited = data.metrics.total_rate_limited ? data.metrics.total_rate_limited.values.count : 0;
-    const totalRequests = accepted + soldOut + rateLimited;
+    const errors = data.metrics.total_errors ? data.metrics.total_errors.values.count : 0;
+    const timeouts = data.metrics.total_timeouts ? data.metrics.total_timeouts.values.count : 0;
+    
+    // Use k6's http_reqs count for accurate total (includes all requests: success, errors, timeouts)
+    const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : (accepted + soldOut + rateLimited + errors);
+    
+    // Get k6's built-in http_req_failed metric for verification
+    const httpReqFailed = data.metrics.http_req_failed ? data.metrics.http_req_failed.values.rate : 0;
+    const httpReqFailedCount = data.metrics.http_req_failed ? data.metrics.http_req_failed.values.passes : 0;
 
     // Get latency from http_req_duration
     // k6 default percentile keys: avg, min, med (=p50), max, p(90), p(95)
-    // Note: p(99) is not a default key; we use p(90) instead
     const duration = data.metrics.http_req_duration || {};
     const vals = duration.values || {};
     const avg = vals['avg'] || 0;
@@ -166,12 +178,18 @@ export function handleSummary(data) {
   Purchases Accepted : ${accepted} (expected: ${EXPECTED_STOCK})
   Sold Out (409)     : ${soldOut}
   Rate Limited (429) : ${rateLimited}
+  Errors (5xx/other) : ${errors}
+  Timeouts           : ${timeouts}
 
   Response Times:
     Avg : ${avg.toFixed(1)}ms
     P50 : ${p50.toFixed(1)}ms
     P90 : ${p90.toFixed(1)}ms
     P95 : ${p95.toFixed(1)}ms
+
+  k6 Built-in Metrics (for verification):
+    http_req_failed rate: ${(httpReqFailed * 100).toFixed(2)}%
+    http_req_failed count: ${httpReqFailedCount}
 
   Correctness:
     Oversold : ${oversold ? 'YES' : 'NO'}
