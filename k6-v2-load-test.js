@@ -11,13 +11,20 @@ import { Rate, Trend, Counter } from 'k6/metrics';
 // Usage:
 //   k6 run k6-v2-load-test.js
 //   k6 run --out web-dashboard k6-v2-load-test.js
+//   k6 run -e RUN_500K_REQUESTS=1 k6-v2-load-test.js  # target ~0.5M total requests
+//   k6 run -e RUN_1M_REQUESTS=1 k6-v2-load-test.js   # target ~1M total requests
 //
 // Override stock:  k6 run -e EXPECTED_STOCK=1000 k6-v2-load-test.js
+//
+// --- High load on one machine ---
+// - 0.5M total requests: RUN_500K_REQUESTS=1 (hold 35s at 10k VUs; total ~500k with ramp).
+// - 1M total requests: RUN_1M_REQUESTS=1 (~3m at 10k VUs).
+// - 1M concurrent VUs: NOT feasible on one machine (use k6 Cloud or distributed injectors).
 // =============================================================================
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080/api/v2';
 const PRODUCT_ID = __ENV.PRODUCT_ID || '1';
-const EXPECTED_STOCK = parseInt(__ENV.EXPECTED_STOCK || '1000');
+const EXPECTED_STOCK = parseInt(__ENV.EXPECTED_STOCK || '10000');
 
 // Custom metrics
 const purchaseAccepted = new Rate('purchase_accepted');       // 202 responses
@@ -31,22 +38,25 @@ const totalAccepted = new Counter('total_accepted');
 const totalSoldOut = new Counter('total_sold_out');
 const totalRateLimited = new Counter('total_rate_limited');
 
-// Load profile: ramp to 10k virtual users
-// Note: 100k+ VUs requires distributed k6 or k6 Cloud.
-// 10k VUs on a local machine generates ~50k-100k+ total requests,
-// which is sufficient to validate the Redis optimization.
+// Load profile: 10k VUs. RUN_500K_REQUESTS=1 => ~500k total; RUN_1M_REQUESTS=1 => ~1M total.
+// Calibrated from: 715k requests in 130s with 1m hold (ramp 50s + hold 60s + ramp 20s).
+const run500K = __ENV.RUN_500K_REQUESTS === '1' || __ENV.RUN_500K_REQUESTS === 'true';
+const run1M = __ENV.RUN_1M_REQUESTS === '1' || __ENV.RUN_1M_REQUESTS === 'true';
+const peakVUs = 10000;
+const holdDuration = run1M ? '3m' : (run500K ? '35s' : '1m');  // 35s => ~500k total, 1m => ~700k, 3m => ~2.1M
+
 export const options = {
     scenarios: {
         flash_sale: {
             executor: 'ramping-vus',
             startVUs: 0,
             stages: [
-                { duration: '10s', target: 1000 },      // Warm up: 0 -> 1k
-                { duration: '20s', target: 5000 },       // Ramp: 1k -> 5k
-                { duration: '20s', target: 10000 },      // Ramp: 5k -> 10k (peak)
-                { duration: '1m',  target: 10000 },      // Hold at 10k for 1 minute
-                { duration: '10s', target: 5000 },       // Ramp down: 10k -> 5k
-                { duration: '10s', target: 0 },          // Ramp down: 5k -> 0
+                { duration: '10s', target: 1000 },
+                { duration: '20s', target: 5000 },
+                { duration: '20s', target: peakVUs },
+                { duration: holdDuration, target: peakVUs },
+                { duration: '10s', target: 5000 },
+                { duration: '10s', target: 0 },
             ],
             gracefulRampDown: '10s',
             gracefulStop: '30s',
