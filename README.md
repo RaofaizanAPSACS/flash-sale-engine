@@ -98,6 +98,11 @@ Content-Type: application/json
 
 ### Load Testing with k6
 
+**500K comparison test (same profile as v2):**
+```bash
+k6 run k6-v1-load-test-500k.js
+```
+
 **Quick test (100k users):**
 ```bash
 k6 run k6-quick-test.js
@@ -112,6 +117,8 @@ k6 run k6-load-test.js
 - ✅ Exactly 100 successful purchases (matches stock)
 - ⚠️ High error rate under extreme load (expected)
 - ⚠️ High P99 latency (15-30+ seconds) under 1000+ concurrent users
+
+**See [LOAD-TEST-REPORT-V1.md](./LOAD-TEST-REPORT-V1.md) for detailed 500K load test results.**
 
 ### Java Stress Test
 
