@@ -30,6 +30,10 @@ User Request
 
 **Cold path (background):** Worker consumes Redis Stream, writes confirmed orders to PostgreSQL in batches.
 
+### Architecture Comparison (v1 vs v2)
+
+![Architecture comparison: v1 Standard (PostgreSQL only) vs v2 Optimized (Redis + async processing)](architecture-comparison-v1-vs-v2.svg)
+
 ## Quick Start
 
 ### Prerequisites
@@ -151,6 +155,10 @@ Key settings in `application.properties`:
 | `spring.datasource.hikari.maximum-pool-size` | 20 | DB pool (minimal, most load on Redis) |
 
 ## Expected Performance
+
+### Load Test Comparison (500K requests, 10K VUs)
+
+![Load test comparison: v1 vs v2 — DB-confirmed purchases, latency, errors](load-test-comparison-v1-vs-v2.svg)
 
 | Metric | v1 (Standard) | v2 (Optimized) |
 |--------|---------------|----------------|

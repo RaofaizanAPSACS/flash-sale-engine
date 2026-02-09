@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 820" width="940" height="820">
+  <style>
+    text { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  </style>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f0f1a"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </linearGradient>
+    <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#ff6b6b"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#44dd88"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#667788"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#4499ff"/>
+    </marker>
+    <marker id="arrowYellow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#ffcc44"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="940" height="820" fill="url(#bg)" rx="12"/>
+
+  <!-- Title -->
+  <text x="470" y="38" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="700">Flash Sale Engine - Architecture Comparison</text>
+  <text x="470" y="60" text-anchor="middle" fill="#8888aa" font-size="13">v1 Standard (PostgreSQL Only) vs v2 Optimized (Redis + Async Processing)</text>
+  <line x1="40" y1="74" x2="900" y2="74" stroke="#333355" stroke-width="1"/>
+
+  <!-- ==================== V1 SECTION ==================== -->
+  <text x="235" y="102" text-anchor="middle" fill="#ff6b6b" font-size="17" font-weight="700">v1 - Standard Solution</text>
+  <text x="235" y="120" text-anchor="middle" fill="#886666" font-size="11">Synchronous | Every request hits PostgreSQL</text>
+
+  <!-- v1 Box area -->
+  <rect x="30" y="132" width="410" height="310" rx="8" fill="#16101a" stroke="#3a2233" stroke-width="1"/>
+
+  <!-- v1: Users -->
+  <rect x="160" y="148" width="150" height="36" rx="6" fill="#2a2244" stroke="#4a3366" stroke-width="1"/>
+  <text x="235" y="172" text-anchor="middle" fill="#bb99dd" font-size="13" font-weight="600">10,000 Users</text>
+
+  <!-- v1: Arrow Users -> Controller -->
+  <line x1="235" y1="184" x2="235" y2="202" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowRed)"/>
+  <text x="278" y="198" fill="#886666" font-size="9">ALL traffic</text>
+
+  <!-- v1: Controller -->
+  <rect x="160" y="206" width="150" height="36" rx="6" fill="#1a2a3a" stroke="#2a4a5a" stroke-width="1"/>
+  <text x="235" y="230" text-anchor="middle" fill="#88bbdd" font-size="13" font-weight="600">Controller</text>
+
+  <!-- v1: Arrow Controller -> Service -->
+  <line x1="235" y1="242" x2="235" y2="260" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowRed)"/>
+
+  <!-- v1: Service -->
+  <rect x="160" y="264" width="150" height="36" rx="6" fill="#1a2a3a" stroke="#2a4a5a" stroke-width="1"/>
+  <text x="235" y="288" text-anchor="middle" fill="#88bbdd" font-size="13" font-weight="600">SaleService</text>
+
+  <!-- v1: Arrow Service -> PostgreSQL -->
+  <line x1="235" y1="300" x2="235" y2="318" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowRed)"/>
+  <text x="278" y="314" fill="#886666" font-size="9">Row lock</text>
+
+  <!-- v1: PostgreSQL -->
+  <rect x="140" y="322" width="190" height="44" rx="8" fill="#2a1a10" stroke="#885522" stroke-width="1.5"/>
+  <text x="235" y="340" text-anchor="middle" fill="#ffaa44" font-size="11" font-weight="600">PostgreSQL</text>
+  <text x="235" y="356" text-anchor="middle" fill="#aa8844" font-size="10">Atomic UPDATE + Row Lock</text>
+
+  <!-- v1: Arrow PostgreSQL -> Response -->
+  <line x1="235" y1="366" x2="235" y2="384" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowRed)"/>
+
+  <!-- v1: Response -->
+  <rect x="160" y="388" width="150" height="36" rx="6" fill="#2a1520" stroke="#5a2233" stroke-width="1"/>
+  <text x="235" y="412" text-anchor="middle" fill="#ff9999" font-size="13" font-weight="600">200 / 409 / Timeout</text>
+
+  <!-- v1: Bottleneck callout -->
+  <rect x="52" y="280" width="96" height="60" rx="5" fill="#3a1520" stroke="#5a2233" stroke-width="1"/>
+  <text x="100" y="298" text-anchor="middle" fill="#ff6b6b" font-size="10" font-weight="700">BOTTLENECK</text>
+  <text x="100" y="312" text-anchor="middle" fill="#cc6666" font-size="9">10 DB conns</text>
+  <text x="100" y="324" text-anchor="middle" fill="#cc6666" font-size="9">Row lock</text>
+  <text x="100" y="336" text-anchor="middle" fill="#cc6666" font-size="9">contention</text>
+  <line x1="148" y1="310" x2="160" y2="310" stroke="#5a2233" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- v1: HikariCP label -->
+  <rect x="342" y="280" width="86" height="48" rx="5" fill="#2a1a10" stroke="#554422" stroke-width="1"/>
+  <text x="385" y="298" text-anchor="middle" fill="#aa8844" font-size="10" font-weight="600">HikariCP</text>
+  <text x="385" y="312" text-anchor="middle" fill="#886633" font-size="9">10 conns</text>
+  <text x="385" y="324" text-anchor="middle" fill="#886633" font-size="9">30s timeout</text>
+  <line x1="310" y1="304" x2="342" y2="304" stroke="#554422" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- ==================== V2 SECTION ==================== -->
+  <text x="700" y="102" text-anchor="middle" fill="#44dd88" font-size="17" font-weight="700">v2 - Optimized Solution</text>
+  <text x="700" y="120" text-anchor="middle" fill="#558866" font-size="11">Redis Hot Path | Async DB Writes | In-Memory Cache</text>
+
+  <!-- v2 Box area -->
+  <rect x="500" y="132" width="410" height="310" rx="8" fill="#0a1a14" stroke="#1a4a33" stroke-width="1"/>
+
+  <!-- v2: Users -->
+  <rect x="625" y="148" width="150" height="36" rx="6" fill="#2a2244" stroke="#4a3366" stroke-width="1"/>
+  <text x="700" y="172" text-anchor="middle" fill="#bb99dd" font-size="13" font-weight="600">10,000 Users</text>
+
+  <!-- v2: Arrow Users -> Rate Limiter -->
+  <line x1="700" y1="184" x2="700" y2="202" stroke="#44dd88" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- v2: Rate Limiter -->
+  <rect x="625" y="206" width="150" height="30" rx="6" fill="#1a1a30" stroke="#4444aa" stroke-width="1"/>
+  <text x="700" y="226" text-anchor="middle" fill="#8888ee" font-size="11" font-weight="600">Rate Limiter (Redis)</text>
+
+  <!-- v2: 429 reject arrow -->
+  <line x1="775" y1="221" x2="820" y2="221" stroke="#667788" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <text x="848" y="218" fill="#667788" font-size="9">429</text>
+  <text x="848" y="230" fill="#667788" font-size="9">Reject</text>
+
+  <!-- v2: Arrow Rate Limiter -> Sale Status -->
+  <line x1="700" y1="236" x2="700" y2="250" stroke="#44dd88" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- v2: Sale Status Check (in-memory) -->
+  <rect x="612" y="254" width="176" height="30" rx="6" fill="#1a2a1a" stroke="#2a5a2a" stroke-width="1"/>
+  <text x="700" y="274" text-anchor="middle" fill="#66cc66" font-size="11" font-weight="600">Sold-Out Cache (Memory)</text>
+
+  <!-- v2: 409 reject arrow -->
+  <line x1="788" y1="269" x2="820" y2="269" stroke="#667788" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <text x="848" y="266" fill="#667788" font-size="9">409</text>
+  <text x="848" y="278" fill="#667788" font-size="9">Instant</text>
+
+  <!-- v2: Arrow -> Stock Decrement -->
+  <line x1="700" y1="284" x2="700" y2="298" stroke="#44dd88" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- v2: Stock Decrement -->
+  <rect x="612" y="302" width="176" height="30" rx="6" fill="#2a1a1a" stroke="#cc4444" stroke-width="1"/>
+  <text x="700" y="322" text-anchor="middle" fill="#ff8888" font-size="11" font-weight="600">Stock Decrement (Lua)</text>
+
+  <!-- v2: Redis label for stock -->
+  <rect x="520" y="288" width="78" height="34" rx="5" fill="#2a1010" stroke="#aa3333" stroke-width="1"/>
+  <text x="559" y="303" text-anchor="middle" fill="#ff6666" font-size="10" font-weight="600">Redis</text>
+  <text x="559" y="316" text-anchor="middle" fill="#cc4444" font-size="9">Atomic Lua</text>
+  <line x1="598" y1="310" x2="612" y2="317" stroke="#aa3333" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- v2: Arrow -> Redis Stream -->
+  <line x1="700" y1="332" x2="700" y2="346" stroke="#44dd88" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- v2: Redis Stream Enqueue -->
+  <rect x="612" y="350" width="176" height="30" rx="6" fill="#1a1a2a" stroke="#4455aa" stroke-width="1"/>
+  <text x="700" y="370" text-anchor="middle" fill="#6688ee" font-size="11" font-weight="600">Enqueue (Redis Stream)</text>
+
+  <!-- v2: Arrow -> 202 Response -->
+  <line x1="700" y1="380" x2="700" y2="394" stroke="#44dd88" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- v2: 202 Response -->
+  <rect x="625" y="398" width="150" height="30" rx="6" fill="#0a3a20" stroke="#1a5a33" stroke-width="1"/>
+  <text x="700" y="418" text-anchor="middle" fill="#44ee88" font-size="13" font-weight="600">202 Accepted</text>
+
+  <!-- v2: Fast path label -->
+  <rect x="516" y="206" width="62" height="20" rx="4" fill="#0a3a20"/>
+  <text x="547" y="220" text-anchor="middle" fill="#44dd88" font-size="9" font-weight="700">HOT PATH</text>
+
+  <!-- ==================== ASYNC WORKER SECTION ==================== -->
+  <rect x="500" y="456" width="410" height="90" rx="8" fill="#0f1520" stroke="#2a3a55" stroke-width="1" stroke-dasharray="6,3"/>
+
+  <!-- v2: Arrow Stream -> Worker -->
+  <line x1="700" y1="432" x2="700" y2="466" stroke="#4499ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowBlue)"/>
+  <text x="738" y="452" fill="#4477aa" font-size="9">Async</text>
+
+  <!-- v2: Worker -->
+  <rect x="590" y="470" width="130" height="30" rx="6" fill="#1a2030" stroke="#2a4466" stroke-width="1"/>
+  <text x="655" y="490" text-anchor="middle" fill="#88aadd" font-size="11" font-weight="600">Background Worker</text>
+
+  <!-- v2: Arrow Worker -> PostgreSQL -->
+  <line x1="720" y1="485" x2="770" y2="485" stroke="#ffcc44" stroke-width="1.5" marker-end="url(#arrowYellow)"/>
+
+  <!-- v2: PostgreSQL (async) -->
+  <rect x="774" y="466" width="120" height="38" rx="6" fill="#2a1a10" stroke="#885522" stroke-width="1"/>
+  <text x="834" y="482" text-anchor="middle" fill="#ffaa44" font-size="10" font-weight="600">PostgreSQL</text>
+  <text x="834" y="496" text-anchor="middle" fill="#aa8844" font-size="9">~10k writes only</text>
+
+  <!-- v2: Async label -->
+  <text x="706" y="540" text-anchor="middle" fill="#445566" font-size="10">Async: DB writes happen in background, not on hot path</text>
+
+  <!-- ==================== COMPARISON SECTION ==================== -->
+  <line x1="40" y1="565" x2="900" y2="565" stroke="#333355" stroke-width="1"/>
+  <text x="470" y="590" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="700">Key Differences</text>
+
+  <!-- Comparison table background -->
+  <rect x="40" y="602" width="860" height="200" rx="8" fill="#12121e" stroke="#2a2a44" stroke-width="1"/>
+
+  <!-- Table headers -->
+  <rect x="40" y="602" width="860" height="30" rx="8" fill="#1a1a30"/>
+  <rect x="40" y="622" width="860" height="10" fill="#1a1a30"/>
+  <text x="200" y="622" text-anchor="middle" fill="#8888aa" font-size="12" font-weight="700">Aspect</text>
+  <text x="490" y="622" text-anchor="middle" fill="#ff8888" font-size="12" font-weight="700">v1 Standard</text>
+  <text x="770" y="622" text-anchor="middle" fill="#44dd88" font-size="12" font-weight="700">v2 Optimized</text>
+
+  <!-- Row 1: Hot path -->
+  <text x="200" y="654" text-anchor="middle" fill="#aaaacc" font-size="12">Hot Path</text>
+  <text x="490" y="654" text-anchor="middle" fill="#ff9999" font-size="12">PostgreSQL (row lock)</text>
+  <text x="770" y="654" text-anchor="middle" fill="#88eebb" font-size="12">Redis (in-memory)</text>
+  <line x1="60" y1="664" x2="880" y2="664" stroke="#222244" stroke-width="1"/>
+
+  <!-- Row 2: Stock check -->
+  <text x="200" y="686" text-anchor="middle" fill="#aaaacc" font-size="12">Stock Check</text>
+  <text x="490" y="686" text-anchor="middle" fill="#ff9999" font-size="12">SQL query (5-10s under load)</text>
+  <text x="770" y="686" text-anchor="middle" fill="#88eebb" font-size="12">Lua script (sub-ms)</text>
+  <line x1="60" y1="696" x2="880" y2="696" stroke="#222244" stroke-width="1"/>
+
+  <!-- Row 3: DB writes -->
+  <text x="200" y="718" text-anchor="middle" fill="#aaaacc" font-size="12">DB Writes</text>
+  <text x="490" y="718" text-anchor="middle" fill="#ff9999" font-size="12">Synchronous (blocks response)</text>
+  <text x="770" y="718" text-anchor="middle" fill="#88eebb" font-size="12">Async (background worker)</text>
+  <line x1="60" y1="728" x2="880" y2="728" stroke="#222244" stroke-width="1"/>
+
+  <!-- Row 4: Sold-out path -->
+  <text x="200" y="750" text-anchor="middle" fill="#aaaacc" font-size="12">Sold-Out Response</text>
+  <text x="490" y="750" text-anchor="middle" fill="#ff9999" font-size="12">Still hits DB (slow reject)</text>
+  <text x="770" y="750" text-anchor="middle" fill="#88eebb" font-size="12">In-memory cache (0 Redis calls)</text>
+  <line x1="60" y1="760" x2="880" y2="760" stroke="#222244" stroke-width="1"/>
+
+  <!-- Row 5: Infra -->
+  <text x="200" y="782" text-anchor="middle" fill="#aaaacc" font-size="12">Infrastructure</text>
+  <text x="490" y="782" text-anchor="middle" fill="#ff9999" font-size="12">PostgreSQL only</text>
+  <text x="770" y="782" text-anchor="middle" fill="#88eebb" font-size="12">PostgreSQL + Redis</text>
+</svg>
